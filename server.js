@@ -57,7 +57,7 @@ async function autoDj(){
       const pop = leftsong[_id].pop();
       popSong[_id] = [pop]
       currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
-      let duration = JSON.parse(JSON.stringify(pop)).duration ?? 30
+      let duration = JSON.parse(JSON.stringify(pop)).duration || 30
       console.log(JSON.parse(JSON.stringify(pop)).duration)
       // console.log(leftsong[_id].length)
       io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
@@ -402,7 +402,7 @@ function setOut(ms,_id){
         const pop = leftsong[_id].pop();
         popSong[_id] = [...popSong[_id],pop]
         currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
-        let duration = JSON.parse(JSON.stringify(pop)).duration ?? 30
+        let duration = JSON.parse(JSON.stringify(pop)).duration || 30
         console.log(duration)
         // console.log(currentSong[_id])
         // console.log(popSong[_id])
