@@ -11,6 +11,8 @@ const downloadAndMergeSongs = require('./utils/merge-file')
 const fs = require('fs');
 const cors = require('cors');
 const subtractOneMinute = require('./utils/subtractOneMinutes');
+const userModel = require('./models/user')
+const songModel = require('./models/song')
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
@@ -32,20 +34,55 @@ const songsStartTime = {}
 const songsStartTimeByUser = {}
 const listeners = {};
 
+const currentSong = {}
+const popSong = {}
+const leftsong = {}
+
+
+
+//auto dj start
+
+
+async function autoDj(){
+  let users = await userModel.find();
+  users = users.filter((data) => { 
+    return !data.isDJ
+  })
+  
+  users.forEach(async ({_id}) => {
+    let songs = await songModel.find({owner: _id});
+    leftsong[_id] = songs
+    console.log(leftsong[_id].length)
+    if(leftsong[_id] && leftsong[_id].length != 0){
+      const pop = leftsong[_id].pop();
+      popSong[_id] = [pop]
+      currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
+      let duration = JSON.parse(JSON.stringify(pop)).duration ?? 30
+      console.log(JSON.parse(JSON.stringify(pop)).duration)
+      // console.log(leftsong[_id].length)
+      io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
+      setOut(duration*1000,_id);
+    }
+  });
+}
+
+
+autoDj();
+//auto dj end
 
 
 // add cron jobs
 async function addCrobJobs(){
   const scheduleItems = await scheduleSchems.find().populate('songs');
-  console.log(JSON.stringify(scheduleItems[0]))
+  // console.log(JSON.stringify(scheduleItems[0]))
   scheduleItems.forEach(({ date,time, songs, owner,_id,status }) => {
 
     songs = songs.map(data => `${process.env.FRONTEND_URL}${data.audio}`);
-    console.log(songs)
-    console.log(time);
+    // console.log(songs)
+    // console.log(time);
     time = subtractOneMinute(time);
     const datetime = `${date}T${time}:00`
-    console.log(datetime)
+    // console.log(datetime)
     const isExist = cronJobRefs[_id];
     // console.log('set ho raha ab ',_id);
     if(isExist){
@@ -57,7 +94,7 @@ async function addCrobJobs(){
       return
     }
     const user = {_id: owner}
-    console.log(user)
+    // console.log(user)
     setJobs(datetime, songs, user,_id,status);
   });
 }
@@ -161,6 +198,11 @@ io.on('connection', (socket) => {
   socket.on('answer', (data) => {
     console.log('answer',data);
     io.to(data?.recieverId).emit('answer',{answer: data?.answer});
+  });
+
+  socket.on('auto-dj',(data) => {
+    console.log('auto-dj',data)
+    io.to(socket.id).emit("song-change",{currentSong: currentSong[data?.roomId]})
   });
   
   socket.on('ice-candidate', (data) => socket.broadcast.emit('ice-candidate', data));
@@ -332,6 +374,44 @@ async function setExpireRoute (outputFileName,_id,user){
         }, songLengthInMilliseconds);
       }
    });
+}
+
+
+
+function setOut(ms,_id){
+  console.log('calling setOut',ms,_id)
+  console.log(currentSong[_id])
+  setTimeout(() => {
+    console.log('calling setTimeout')
+    if(leftsong[_id] && leftsong[_id].length == 0){
+      console.log('suffling...')
+      const arr = [...popSong[_id]]
+      for(let i = arr.length -1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+
+      leftsong[_id] = arr;
+      popSong[_id] = [];
+      // console.log(popSong[_id]);
+      // console.log(leftsong[_id]);
+    }
+
+    if(leftsong[_id] && leftsong[_id].length != 0){
+        const pop = leftsong[_id].pop();
+        popSong[_id] = [...popSong[_id],pop]
+        currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
+        let duration = JSON.parse(JSON.stringify(pop)).duration ?? 30
+        console.log(duration)
+        // console.log(currentSong[_id])
+        // console.log(popSong[_id])
+        // console.log(leftsong[_id])
+        io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
+        setOut(duration*1000,_id);
+    }else{
+      console.log('nothing',leftsong[_id] && leftsong[_id].length != 0)
+    }
+  },ms-2000)
 }
 
 const PORT = process.env.PORT || 4000;
