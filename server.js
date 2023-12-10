@@ -226,6 +226,7 @@ io.on('connection', (socket) => {
     }
     delete roomsowners[userId];
     delete ownersSocketId[socket.id];
+    io.to(userId).emit('owner-left',{});
     io.to(userId).emit('room-unactive',{});
     console.log('User disconnected',user?.name);
 
