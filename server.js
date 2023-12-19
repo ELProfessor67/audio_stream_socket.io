@@ -37,9 +37,9 @@ const songsStartTime = {}
 const songsStartTimeByUser = {}
 const listeners = {};
 
-const currentSong = {}
-const popSong = {}
-const leftsong = {}
+let currentSong = {}
+let popSong = {}
+let leftsong = {}
 
 
 
@@ -80,6 +80,9 @@ app.post('/upload',async (req,res) => {
       fs.writeFileSync(path.join(__dirname,`./public${filename}`),buffer,'binary');
       res.status(201).json({success: true});
       setTimeout(() => {
+        currentSong = {}
+        popSong = {}
+        leftsong = {}
         autoDj();
       },5000)
       console.log('upload success')
@@ -101,6 +104,9 @@ app.delete('/delete',async (req,res) => {
     });
     res.status(200).json({success: true});
     setTimeout(() => {
+      currentSong = {}
+      popSong = {}
+      leftsong = {}
       autoDj();
     },5000)
   }catch(err){
