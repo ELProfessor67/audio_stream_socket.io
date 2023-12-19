@@ -13,6 +13,7 @@ const cors = require('cors');
 const subtractOneMinute = require('./utils/subtractOneMinutes');
 const userModel = require('./models/user')
 const songModel = require('./models/song')
+const uploadRouter = require('./upload');
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
@@ -25,9 +26,11 @@ const schedule = require('node-schedule');
 config({path: path.join(__dirname,'./config/config.env')});
 connectDb();
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded());
+app.use(express.json({limit: '100mb'}));
+app.use(express.urlencoded({limit: '100mb'}));
 app.use(cors());
+app.use('',express.static(path.join(__dirname,'./public')));
+app.use('',uploadRouter);
 
 let cronJobRefs = {}
 const songsStartTime = {}
@@ -56,7 +59,7 @@ async function autoDj(){
     if(leftsong[_id] && leftsong[_id].length != 0){
       const pop = leftsong[_id].pop();
       popSong[_id] = [pop]
-      currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
+      currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
       let duration = JSON.parse(JSON.stringify(pop)).duration || 30
       console.log(JSON.parse(JSON.stringify(pop)).duration)
       // console.log(leftsong[_id].length)
@@ -77,7 +80,8 @@ async function addCrobJobs(){
   // console.log(JSON.stringify(scheduleItems[0]))
   scheduleItems.forEach(({ date,time, songs, owner,_id,status }) => {
 
-    songs = songs.map(data => `${process.env.FRONTEND_URL}${data.audio}`);
+    // songs = songs.map(data => `${process.env.FRONTEND_URL}${data.audio}`);
+    songs = songs.map(data => `${data.audio}`);
     // console.log(songs)
     // console.log(time);
     time = subtractOneMinute(time);
@@ -401,7 +405,7 @@ function setOut(ms,_id){
     if(leftsong[_id] && leftsong[_id].length != 0){
         const pop = leftsong[_id].pop();
         popSong[_id] = [...popSong[_id],pop]
-        currentSong[_id] = {url: pop.audio,currentTime: Date.now()}
+        currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
         let duration = JSON.parse(JSON.stringify(pop)).duration || 30
         console.log(duration)
         // console.log(currentSong[_id])
