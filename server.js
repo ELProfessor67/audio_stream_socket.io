@@ -13,7 +13,7 @@ const cors = require('cors');
 const subtractOneMinute = require('./utils/subtractOneMinutes');
 const userModel = require('./models/user')
 const songModel = require('./models/song')
-const uploadRouter = require('./upload');
+// const uploadRouter = require('./upload');
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
@@ -30,7 +30,7 @@ app.use(express.json({limit: '100mb'}));
 app.use(express.urlencoded({limit: '100mb'}));
 app.use(cors());
 app.use('',express.static(path.join(__dirname,'./public')));
-app.use('',uploadRouter);
+// app.use('',uploadRouter);
 
 let cronJobRefs = {}
 const songsStartTime = {}
@@ -71,6 +71,43 @@ async function autoDj(){
 
 
 autoDj();
+
+app.post('/upload',async (req,res) => {
+  try{
+    const {filename,base64} = req.body;
+    const filterData = base64.substr(base64.indexOf(',')+1);
+    const buffer = new Buffer(filterData,'base64');
+      fs.writeFileSync(path.join(__dirname,`./public${filename}`),buffer,'binary');
+      res.status(201).json({success: true});
+      setTimeout(() => {
+        autoDj();
+      },5000)
+      console.log('upload success')
+  }catch(err){
+    console.log('err')
+    res.status(501).json({success: false,message: err.message});
+  }
+});
+
+app.delete('/delete',async (req,res) => {
+  try{
+    const {id:filename} = req.query;
+    console.log(filename)
+    fs.unlink(path.join(__dirname,`./public${filename}`),(err) => {
+      if(err){
+        console.log(err)
+      }
+      console.log(`delete file: ${filename}`)
+    });
+    res.status(200).json({success: true});
+    setTimeout(() => {
+      autoDj();
+    },5000)
+  }catch(err){
+    res.status(501).json({success: false,message: err.message});
+  }
+});
+
 //auto dj end
 
 
