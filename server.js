@@ -40,6 +40,7 @@ const listeners = {};
 let currentSong = {}
 let popSong = {}
 let leftsong = {}
+let autosettimeoutRef;
 
 
 
@@ -85,6 +86,9 @@ app.post('/upload',async (req,res) => {
       }
 
       settimeoutref = setTimeout(() => {
+        if(autosettimeoutRef){
+          clearTimeout(autosettimeoutRef);
+        }
         currentSong = {}
         popSong = {}
         leftsong = {}
@@ -115,6 +119,9 @@ app.delete('/delete',async (req,res) => {
     }
 
     settimeoutref = setTimeout(() => {
+      if(autosettimeoutRef){
+        clearTimeout(autosettimeoutRef);
+      }
       currentSong = {}
       popSong = {}
       leftsong = {}
@@ -440,7 +447,7 @@ async function setExpireRoute (outputFileName,_id,user){
 function setOut(ms,_id){
   console.log('calling setOut',ms,_id)
   console.log(currentSong[_id])
-  setTimeout(() => {
+  autosettimeoutRef = setTimeout(() => {
     console.log('calling setTimeout')
     if(leftsong[_id] && leftsong[_id].length == 0){
       console.log('suffling...')
