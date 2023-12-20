@@ -71,7 +71,7 @@ async function autoDj(){
 
 
 autoDj();
-
+let settimeoutref;
 app.post('/upload',async (req,res) => {
   try{
     const {filename,base64} = req.body;
@@ -79,7 +79,12 @@ app.post('/upload',async (req,res) => {
     const buffer = new Buffer(filterData,'base64');
       fs.writeFileSync(path.join(__dirname,`./public${filename}`),buffer,'binary');
       res.status(201).json({success: true});
-      setTimeout(() => {
+
+      if(settimeoutref){
+        clearTimeout(settimeoutref);
+      }
+
+      settimeoutref = setTimeout(() => {
         currentSong = {}
         popSong = {}
         leftsong = {}
@@ -92,6 +97,7 @@ app.post('/upload',async (req,res) => {
   }
 });
 
+
 app.delete('/delete',async (req,res) => {
   try{
     const {id:filename} = req.query;
@@ -103,7 +109,12 @@ app.delete('/delete',async (req,res) => {
       console.log(`delete file: ${filename}`)
     });
     res.status(200).json({success: true});
-    setTimeout(() => {
+
+    if(settimeoutref){
+      clearTimeout(settimeoutref);
+    }
+
+    settimeoutref = setTimeout(() => {
       currentSong = {}
       popSong = {}
       leftsong = {}
