@@ -62,7 +62,7 @@ async function autoDj(){
       popSong[_id] = [pop]
       currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
       let duration = JSON.parse(JSON.stringify(pop)).duration || 30
-      console.log(JSON.parse(JSON.stringify(pop)).duration)
+      // console.log(JSON.parse(JSON.stringify(pop)).duration)
       // console.log(leftsong[_id].length)
       io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
       setOut(duration*1000,_id);
@@ -227,6 +227,7 @@ io.on('connection', (socket) => {
 
   socket.on('owner-join',(data) => {
     console.log('data',data)
+    socket.join(data.user._id.toString());
     if(data.user) data.user.socketId = socket.id;
     roomsowners[data?.user?._id] = data?.user;
     ownersSocketId[socket.id] = data?.user?._id;
@@ -251,6 +252,12 @@ io.on('connection', (socket) => {
     }
     console.log(data,socket.id)
   });
+
+
+  socket.on('send-message', (data) => {
+    console.log('message',data)
+    io.to(data.roomId).emit('receive-message',{...data});
+  })
 
 
   socket.on('offer', (data) => {
@@ -426,12 +433,12 @@ async function setExpireRoute (outputFileName,_id,user){
 
           
           io.to(user?._id.toString()).emit('schedule-unactive',{});
-          console.log('user id',user._id.toString);
+          // console.log('user id',user._id.toString);
           console.log('ids',Array.from(io?.sockets?.adapter.rooms.get(user?._id.toString) || []));
 
           fs.unlink(outputFileName, (err) => {
             if (err) {
-              console.error(`Error deleting file: ${err}`);
+              // console.error(`Error deleting file: ${err}`);
             } else {
               console.log(`File ${outputFileName} has been deleted successfully`);
             }
@@ -445,12 +452,12 @@ async function setExpireRoute (outputFileName,_id,user){
 
 
 function setOut(ms,_id){
-  console.log('calling setOut',ms,_id)
-  console.log(currentSong[_id])
+  // console.log('calling setOut',ms,_id)
+  // console.log(currentSong[_id])
   autosettimeoutRef = setTimeout(() => {
-    console.log('calling setTimeout')
+    // console.log('calling setTimeout')
     if(leftsong[_id] && leftsong[_id].length == 0){
-      console.log('suffling...')
+      // console.log('suffling...')
       const arr = [...popSong[_id]]
       for(let i = arr.length -1; i > 0; i--){
         const j = Math.floor(Math.random() * (i + 1));
@@ -468,14 +475,14 @@ function setOut(ms,_id){
         popSong[_id] = [...popSong[_id],pop]
         currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
         let duration = JSON.parse(JSON.stringify(pop)).duration || 30
-        console.log(duration)
+        // console.log(duration)
         // console.log(currentSong[_id])
         // console.log(popSong[_id])
         // console.log(leftsong[_id])
         io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
         setOut(duration*1000,_id);
     }else{
-      console.log('nothing',leftsong[_id] && leftsong[_id].length != 0)
+      // console.log('nothing',leftsong[_id] && leftsong[_id].length != 0)
     }
   },ms-2000)
 }
