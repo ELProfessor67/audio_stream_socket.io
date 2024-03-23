@@ -227,7 +227,7 @@ io.on('connection', (socket) => {
 
   socket.on('owner-join',(data) => {
     console.log('data',data)
-    socket.join(data.user._id.toString());
+    socket.join(data?.user?._id.toString());
     if(data.user) data.user.socketId = socket.id;
     roomsowners[data?.user?._id] = data?.user;
     ownersSocketId[socket.id] = data?.user?._id;
@@ -257,6 +257,31 @@ io.on('connection', (socket) => {
   socket.on('send-message', (data) => {
     console.log('message',data)
     io.to(data.roomId).emit('receive-message',{...data});
+  })
+
+  socket.on('call-admin', (data) => {
+    console.log("data",data)
+    const socketId = roomsowners[data.roomId].socketId;
+    
+    io.to(socketId).emit('call-coming',{...data,callerID: socket.id});
+  })
+
+  socket.on('cut-admin', (data) => {
+    
+    const socketId = roomsowners[data.roomId].socketId;
+   
+    io.to(socketId).emit('cut-admin',{...data,callerID: socket.id});
+  })
+
+  socket.on('admin-call-cut', (data) => {
+    io.to(data.callerId).emit('admin-call-cut',{});
+  })
+
+  socket.on('call-response', (data) => {
+    // console.log('message',data)
+
+    // console.log('socket id ',socketId);
+    io.to(data.callerId).emit('call-response',{...data});
   })
 
 
