@@ -102,6 +102,16 @@ app.post('/upload',async (req,res) => {
 });
 
 
+app.get('/api/v1/channel-detail/:id', async (req,res) => {
+  const id = req.params.id;
+  const result = await fetch("http://onlinebazaarr.com/api/v1/channel-detail/"+id);
+  const data = await result.json();
+  res.status(200).json({
+    ...data
+  })
+})
+
+
 app.delete('/delete',async (req,res) => {
   try{
     const {id:filename} = req.query;
