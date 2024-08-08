@@ -21,6 +21,7 @@ const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 const schedule = require('node-schedule');
+const { rootCertificates } = require('tls');
 
 
 config({path: path.join(__dirname,'./config/config.env')});
@@ -56,11 +57,14 @@ async function autoDj(){
   users.forEach(async ({_id}) => {
     let songs = await songModel.find({owner: _id});
     leftsong[_id] = songs
-    console.log(leftsong[_id].length)
+    // console.log(leftsong[_id].length)
     if(leftsong[_id] && leftsong[_id].length != 0){
       const pop = leftsong[_id].pop();
       popSong[_id] = [pop]
-      currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
+      const nextSong = leftsong[_id][leftsong[_id].length-1]
+    
+   
+      currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now(),nextSong, currentSong: pop}
       let duration = JSON.parse(JSON.stringify(pop)).duration || 30
       // console.log(JSON.parse(JSON.stringify(pop)).duration)
       // console.log(leftsong[_id].length)
@@ -77,9 +81,11 @@ app.post('/upload',async (req,res) => {
   try{
     const {filename,base64} = req.body;
     const filterData = base64.substr(base64.indexOf(',')+1);
+    console.log('uploading...')
     const buffer = new Buffer(filterData,'base64');
       fs.writeFileSync(path.join(__dirname,`./public${filename}`),buffer,'binary');
       res.status(201).json({success: true});
+      console.log('uploading end...')
 
       if(settimeoutref){
         clearTimeout(settimeoutref);
@@ -105,6 +111,34 @@ app.post('/upload',async (req,res) => {
 app.get('/api/v1/channel-detail/:id', async (req,res) => {
   const id = req.params.id;
   const result = await fetch("http://onlinebazaarr.com/api/v1/channel-detail/"+id);
+  const data = await result.json();
+  res.status(200).json({
+    ...data
+  })
+})
+
+
+app.get('/api/v1/all-djs', async (req,res) => {
+  const id = req.params.id;
+  const result = await fetch("https://onlinebazaarr.com/api/v1/dj", {
+    "headers": {
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,/;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "accept-language": "en-US,en;q=0.9,hi;q=0.8",
+      "cache-control": "max-age=0",
+      "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\"",
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "none",
+      "sec-fetch-user": "?1",
+      "upgrade-insecure-requests": "1",
+      "cookie": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTUzNDdiNTljMDBhNzQwOWQ5MTgxYzMiLCJpYXQiOjE3MjMxMTYwMjYsImV4cCI6MTcyNDQxMjAyNn0.mpmRLBA2KO9PYa4ZBv-zJYxZ1HAvRaANeRYnVc7aq7Y"
+    },
+    "referrerPolicy": "strict-origin-when-cross-origin",
+    "body": null,
+    "method": "GET"
+  });
   const data = await result.json();
   res.status(200).json({
     ...data
@@ -323,6 +357,11 @@ io.on('connection', (socket) => {
     }
   })
 
+
+  socket.on('next-song', ({roomId,nextSong, currentSong}) => {
+    io.to(roomId).emit('next-song',{nextSong, currentSong});
+  })
+
   socket.on('disconnect', () => {
     const userId = ownersSocketId[socket.id];
     console.log('userId',userId);
@@ -508,7 +547,11 @@ function setOut(ms,_id){
     if(leftsong[_id] && leftsong[_id].length != 0){
         const pop = leftsong[_id].pop();
         popSong[_id] = [...popSong[_id],pop]
-        currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now()}
+        const nextSong = leftsong[_id][leftsong[_id].length-1]
+       
+        console.log(pop,nextSong,'sssssss')
+    
+        currentSong[_id] = {url: `${process.env.SOCKET_URL}${pop.audio}`,currentTime: Date.now(), nextSong, currentSong: pop }
         let duration = JSON.parse(JSON.stringify(pop)).duration || 30
         // console.log(duration)
         // console.log(currentSong[_id])
