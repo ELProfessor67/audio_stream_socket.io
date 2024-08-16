@@ -21,6 +21,6 @@
     "get-audio-duration": "^4.0.1",
     "mongoose": "^8.0.2",
     "node-schedule": "^2.1.1",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.5"
   }
 }
