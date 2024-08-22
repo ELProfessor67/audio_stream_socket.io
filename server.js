@@ -261,6 +261,7 @@ const io = socketIO(server,{
 const roomsowners = {};
 const ownersSocketId = {};
 const scheduleActive = {};
+const roomCurrentSongPlay = {};
 
 
 
@@ -288,7 +289,12 @@ io.on('connection', (socket) => {
     listeners[socket.id] = data.roomId;
 
     if(owner){
-      io.to(socket.id).emit('room-active',{user: owner});
+      if(roomCurrentSongPlay[data.roomId]){
+        const {nextSong,currentSong} = roomCurrentSongPlay[data.roomId];
+        io.to(socket.id).emit('room-active',{user: owner,nextSong,currentSong});
+      }else{
+        io.to(socket.id).emit('room-active',{user: owner});
+      }
     }else{
       const butScheduleActive = scheduleActive[data.roomId];
       console.log('butScheduleActive',butScheduleActive);
@@ -359,6 +365,7 @@ io.on('connection', (socket) => {
 
 
   socket.on('next-song', ({roomId,nextSong, currentSong}) => {
+    roomCurrentSongPlay[roomId] = {nextSong,currentSong};
     io.to(roomId).emit('next-song',{nextSong, currentSong});
   })
 
