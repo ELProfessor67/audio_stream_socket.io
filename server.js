@@ -13,6 +13,7 @@ const cors = require('cors');
 const subtractOneMinute = require('./utils/subtractOneMinutes');
 const userModel = require('./models/user')
 const songModel = require('./models/song')
+const historyModel = require('./models/history')
 // const uploadRouter = require('./upload');
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
@@ -69,6 +70,16 @@ async function autoDj(){
       // console.log(JSON.parse(JSON.stringify(pop)).duration)
       // console.log(leftsong[_id].length)
       io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
+      try {
+        const owner = roomsowners[_id.toString()]
+        if(owner){
+          const {title,cover,album,audio,artist} = currentSong[_id];
+        await historyModel.create({title,cover,album,audio,artist,owner: _id.toString()})
+        }
+        
+      } catch (error) {
+        console.log(error.message)
+      }
       setOut(duration*1000,_id);
     }
   });
@@ -143,6 +154,14 @@ app.get('/api/v1/all-djs', async (req,res) => {
   res.status(200).json({
     ...data
   })
+})
+
+
+app.get('/api/v1/song-history/:id', async (req,res) => {
+  const id = req.params.id;
+  
+  const data = await historyModel.find({owner: id});
+  res.status(200).json(data)
 })
 
 
@@ -364,8 +383,14 @@ io.on('connection', (socket) => {
   })
 
 
-  socket.on('next-song', ({roomId,nextSong, currentSong}) => {
+  socket.on('next-song', async ({roomId,nextSong, currentSong}) => {
     roomCurrentSongPlay[roomId] = {nextSong,currentSong};
+    try {
+      const {title,cover,album,audio,artist} = currentSong;
+      await historyModel.create({title,cover,album,audio,artist,owner: roomId.toString()})
+    } catch (error) {
+      console.log(error.message)
+    }
     io.to(roomId).emit('next-song',{nextSong, currentSong});
   })
 
@@ -565,6 +590,16 @@ function setOut(ms,_id){
         // console.log(popSong[_id])
         // console.log(leftsong[_id])
         io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
+        try {
+          const owner = roomsowners[_id.toString()]
+          if(owner){
+            const {title,cover,album,audio,artist} = currentSong[_id];
+            historyModel.create({title,cover,album,audio,artist,owner: _id.toString()}).then(res => console.log(res)).catch(err => console.error(err.message))
+          }
+          
+        } catch (error) {
+          console.log(error.message)
+        }
         setOut(duration*1000,_id);
     }else{
       // console.log('nothing',leftsong[_id] && leftsong[_id].length != 0)
