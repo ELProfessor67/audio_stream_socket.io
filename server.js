@@ -14,6 +14,8 @@ const subtractOneMinute = require('./utils/subtractOneMinutes');
 const userModel = require('./models/user')
 const songModel = require('./models/song')
 const historyModel = require('./models/history')
+const playlistModel = require('./models/playlisyt')
+const mongoose = require('mongoose');
 // const uploadRouter = require('./upload');
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
@@ -72,9 +74,22 @@ async function autoDj(){
       io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
       try {
         const owner = roomsowners[_id.toString()]
-        if(owner){
-          const {title,cover,album,audio,artist} = currentSong[_id];
-        await historyModel.create({title,cover,album,audio,artist,owner: _id.toString()})
+        if(!owner){
+          
+
+          let album;
+          let artist;
+          const {title,cover,audio,_id:songId} = currentSong[_id]?.currentSong;
+
+          const songObjectId = new mongoose.Types.ObjectId(songId);
+          const playlist = await playlistModel.findOne({ songs: songObjectId }).populate('songs');
+          if(playlist){
+            album = playlist.album || 'unknown'
+            artist = playlist.artist || 'unknown'
+          }
+
+          console.log(currentSong[_id],'ssss',title)
+          await historyModel.create({title,cover,album: album || 'unknown',audio,artist: artist || 'unknown',owner: _id.toString()})
         }
         
       } catch (error) {
@@ -121,7 +136,7 @@ app.post('/upload',async (req,res) => {
 
 app.get('/api/v1/channel-detail/:id', async (req,res) => {
   const id = req.params.id;
-  const result = await fetch("http://onlinebazaarr.com/api/v1/channel-detail/"+id);
+  const result = await fetch("https://hgdjlive.com/api/v1/channel-detail/"+id);
   const data = await result.json();
   res.status(200).json({
     ...data
@@ -131,11 +146,10 @@ app.get('/api/v1/channel-detail/:id', async (req,res) => {
 
 app.get('/api/v1/all-djs', async (req,res) => {
   const id = req.params.id;
-  const result = await fetch("https://onlinebazaarr.com/api/v1/dj", {
+  const result = await fetch("https://hgdjlive.com/api/v1/dj", {
     "headers": {
-      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,/;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
       "accept-language": "en-US,en;q=0.9,hi;q=0.8",
-      "cache-control": "max-age=0",
       "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
       "sec-ch-ua-mobile": "?0",
       "sec-ch-ua-platform": "\"Windows\"",
@@ -144,7 +158,7 @@ app.get('/api/v1/all-djs', async (req,res) => {
       "sec-fetch-site": "none",
       "sec-fetch-user": "?1",
       "upgrade-insecure-requests": "1",
-      "cookie": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTUzNDdiNTljMDBhNzQwOWQ5MTgxYzMiLCJpYXQiOjE3MjMxMTYwMjYsImV4cCI6MTcyNDQxMjAyNn0.mpmRLBA2KO9PYa4ZBv-zJYxZ1HAvRaANeRYnVc7aq7Y"
+      "cookie": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTUzNDdiNTljMDBhNzQwOWQ5MTgxYzMiLCJpYXQiOjE3MjQzNTU1MTIsImV4cCI6MTcyNTY1MTUxMn0.KSHTxOBb4U5iE34Gl_Z69c1EPnkWhQ7-KY50ZVhbrGs"
     },
     "referrerPolicy": "strict-origin-when-cross-origin",
     "body": null,
@@ -160,7 +174,7 @@ app.get('/api/v1/all-djs', async (req,res) => {
 app.get('/api/v1/song-history/:id', async (req,res) => {
   const id = req.params.id;
   
-  const data = await historyModel.find({owner: id});
+  const data = await historyModel.find({owner: id}).sort({createdAt: -1}).limit(15);
   res.status(200).json(data)
 })
 
@@ -386,11 +400,14 @@ io.on('connection', (socket) => {
   socket.on('next-song', async ({roomId,nextSong, currentSong}) => {
     roomCurrentSongPlay[roomId] = {nextSong,currentSong};
     try {
+
+     
       const {title,cover,album,audio,artist} = currentSong;
-      await historyModel.create({title,cover,album,audio,artist,owner: roomId.toString()})
+      await historyModel.create({title,cover,album : album || 'unknown',audio,artist: artist || 'unknown',owner: roomId.toString()})
     } catch (error) {
       console.log(error.message)
     }
+    
     io.to(roomId).emit('next-song',{nextSong, currentSong});
   })
 
@@ -557,10 +574,10 @@ async function setExpireRoute (outputFileName,_id,user){
 
 
 
-function setOut(ms,_id){
+ function setOut(ms,_id){
   // console.log('calling setOut',ms,_id)
   // console.log(currentSong[_id])
-  autosettimeoutRef = setTimeout(() => {
+  autosettimeoutRef = setTimeout(async () => {
     // console.log('calling setTimeout')
     if(leftsong[_id] && leftsong[_id].length == 0){
       // console.log('suffling...')
@@ -592,9 +609,22 @@ function setOut(ms,_id){
         io.to(_id.toString()).emit('song-change',{currentSong: currentSong[_id]})
         try {
           const owner = roomsowners[_id.toString()]
-          if(owner){
-            const {title,cover,album,audio,artist} = currentSong[_id];
-            historyModel.create({title,cover,album,audio,artist,owner: _id.toString()}).then(res => console.log(res)).catch(err => console.error(err.message))
+          if(!owner){
+            let album;
+            let artist;
+            const {title,cover,audio,_id: songId} = currentSong[_id]?.currentSong;
+
+
+           
+
+          const songObjectId = new mongoose.Types.ObjectId(songId);
+          const playlist = await playlistModel.findOne({ songs: songObjectId }).populate('songs');
+          if(playlist){
+            album = playlist.album || 'unknown'
+            artist = playlist.artist || 'unknown'
+          }
+
+            historyModel.create({title,cover,album: album || 'unknown',audio,artist: artist || 'unknown',owner: _id.toString()}).then(res => console.log(res)).catch(err => console.error(err.message))
           }
           
         } catch (error) {
